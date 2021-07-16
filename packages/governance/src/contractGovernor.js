@@ -33,8 +33,10 @@ import { setupGovernance } from './governParam';
 const start = async zcf => {
   const zoe = zcf.getZoeService();
   let registrar;
+  /** @type {Instance} */
   let governedInstance;
 
+  /** @type {StartGovernedContract} */
   const startGovernedInstance = async (
     registrarCreatorFacet,
     governedContractInstallation,

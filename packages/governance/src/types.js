@@ -39,7 +39,9 @@
  * @typedef {Object} ParamManagerBase
  * @property {() => Record<Keyword,ParamDescription>} getParams
  * @property {(name: string) => ParamDescription} getParam
- *
+ */
+
+/**
  * @typedef {{ [updater: string]: (arg: ParamValue) => void }} ParamManagerUpdaters
  * @typedef {ParamManagerBase & ParamManagerUpdaters} ParamManagerFull
  */
@@ -295,21 +297,45 @@
  */
 
 /**
+ * @typedef {Object} ParamSpecification
+ * @property {string} parameterName
+ */
+
+/**
+ * @typedef {Object} ParamChangeVoteResult
+ * @property {Instance} instance - instance of the BallotCounter
+ * @property {Details} details
+ */
+
+/**
+ * @typedef {Object} GovernedContract
+ * @property {VoteOnParamChange} voteOnParamChange
+ * @property {() => any} getCreatorFacet
+ * @property {() => any} getPublicFacet
+ * @property {() => Instance} getInstance
+ */
+
+/**
+ * @callback StartGovernedContract
+ * @param {RegistrarCreator} registrarCreatorFacet
+ * @param {Installation} governedContractInstallation
+ * @param {IssuerKeywordRecord} issuerKeywordRecord
+ * @param {Terms} customTerms
+ * @returns {GovernedContract}
+ */
+
+/**
  * @callback VoteOnParamChange
- * @param {ParamManagerFull} paramMgr
- * @param {Instance} governedInstance
- * @param {QuestionCreator} questionCreator
- * @param {Instance} registrarInstance
- * @param {string} name
- * @param {ParamType} proposedValue
+ * @param {ParamSpecification} paramSpec
+ * @param {ParamValue} proposedValue
  * @param {Installation} ballotCounterInstallation
- * @param {Instance} contractInstance
  * @param {ClosingRule} closingRule
+ * @returns {ParamChangeVoteResult}
  */
 
 /**
  * @typedef {Object} ParamManagerAccessor
- * @property {(a: unknown) => ParamManagerFull} get
+ * @property {(paramSpec: ParamSpecification) => ParamManagerFull} get
  */
 
 /**

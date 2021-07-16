@@ -5,6 +5,14 @@ import { Far } from '@agoric/marshal';
 import buildManualTimer from '@agoric/zoe/tools/manualTimer';
 import { governedParameterTerms } from './governedContract';
 
+/**
+ * @param {ERef<ZoeService>} zoe
+ * @param {Timer} timer
+ * @param {(string:string) => undefined} log
+ * @param {Record<string,Installation>} installations
+ * @param {GovernedContract} voteCreator
+ * @returns {Promise<*>}
+ */
 const contractGovernorStart = async (
   zoe,
   timer,
@@ -18,11 +26,10 @@ const contractGovernorStart = async (
   };
 
   const { details, instance } = await E(voteCreator).voteOnParamChange(
-    'MalleableNumber',
+    { parameterName: 'MalleableNumber' },
     299792458n,
     installations.binaryBallotCounter,
     rule,
-    'contractParams',
   );
 
   E(E(zoe).getPublicFacet(instance))

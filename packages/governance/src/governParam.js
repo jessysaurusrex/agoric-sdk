@@ -24,14 +24,15 @@ const setupGovernance = async (
   registrarInstance,
   contractInstance,
 ) => {
+  /** @type {VoteOnParamChange} */
   const voteOnParamChange = async (
-    paramName,
+    paramSpec,
     proposedValue,
     ballotCounterInstallation,
     closingRule,
-    paramDesc,
   ) => {
-    const paramMgr = E(paramManagerAccessor).get(paramDesc);
+    const paramMgr = E(paramManagerAccessor).get(paramSpec);
+    const paramName = paramSpec.parameterName;
     const param = await E(paramMgr).getParam(paramName);
     assertType(param.type, proposedValue, paramName);
 
@@ -93,7 +94,6 @@ const setupGovernance = async (
     const details = await E(counterPublicFacet).getDetails();
 
     return {
-      ...binaryBallotDetails,
       instance: ballotCounter,
       details,
     };

@@ -9,7 +9,7 @@ import { buildParamManager, ParamType } from '../../../src/paramManager';
 
 const MALLEABLE_NUMBER = 'MalleableNumber';
 
-export const governedParameterTerms = {
+const governedParameterTerms = {
   contractParams: [MALLEABLE_NUMBER],
 };
 
@@ -53,4 +53,5 @@ const start = async zcf => {
   return { publicFacet, creatorFacet };
 };
 harden(start);
-export { start };
+harden(governedParameterTerms);
+export { start, governedParameterTerms };
