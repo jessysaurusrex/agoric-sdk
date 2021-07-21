@@ -707,7 +707,7 @@ export default function buildKernel(
       kernelKeeper.incrementCrankNumber();
       if (snapStore) {
         // eslint-disable-next-line no-use-before-define
-        vatWarehouse.pruneSnapshots(snapStore);
+        vatWarehouse.pruneSnapshots(snapStore, kernelKeeper.getCrankNumber());
       }
     } finally {
       processQueueRunning = undefined;
