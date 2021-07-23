@@ -3,39 +3,34 @@
 import { E } from '@agoric/eventual-send';
 import { Far } from '@agoric/marshal';
 import buildManualTimer from '@agoric/zoe/tools/manualTimer';
+import { q } from '@agoric/assert';
 import { governedParameterTerms } from './governedContract';
 
 /**
  * @param {ERef<ZoeService>} zoe
- * @param {Timer} timer
  * @param {(string:string) => undefined} log
  * @param {Record<string,Installation>} installations
  * @param {GovernedContract} voteCreator
  * @returns {Promise<*>}
  */
-const contractGovernorStart = async (
-  zoe,
-  timer,
-  log,
-  installations,
-  voteCreator,
-) => {
-  const rule = {
-    timer,
-    deadline: 3n,
-  };
-
-  const { details, instance } = await E(voteCreator).voteOnParamChange(
+const contractGovernorStart = async (zoe, log, installations, voteCreator) => {
+  const { details, instance, outcomeOfUpdate } = await E(
+    voteCreator,
+  ).voteOnParamChange(
     { parameterName: 'MalleableNumber' },
     299792458n,
     installations.binaryBallotCounter,
-    rule,
+    3n,
   );
 
   E(E(zoe).getPublicFacet(instance))
     .getOutcome()
-    .then(outcome => log(`vote outcome: ${outcome}`))
+    .then(outcome => log(`vote outcome: ${q(outcome)}`))
     .catch(e => log(`vote failed ${e}`));
+
+  E.when(outcomeOfUpdate, outcome => log(`updated to ${q(outcome)}`)).catch(e =>
+    log(`update failed: ${e}`),
+  );
   return details;
 };
 
@@ -87,10 +82,7 @@ const createCommittee = async (committeeCreator, voterCreator) => {
 
 const votersVote = async (detailsP, votersP, selections) => {
   const [voters, details] = await Promise.all([votersP, detailsP]);
-  const {
-    ballotSpec: { positions },
-    handle,
-  } = details;
+  const { positions, handle } = details;
 
   await Promise.all(
     voters.map((v, i) => {
@@ -117,10 +109,10 @@ const oneVoterValidate = async (
     governedInstanceP,
     governorInstanceP,
   ]);
-  const { instance } = details;
+  const { counterInstance } = details;
 
   E(voters[0]).validate(
-    instance,
+    counterInstance,
     governedInstance,
     registrarInstance,
     governorInstance,
@@ -155,7 +147,7 @@ const makeBootstrap = (argv, cb, vatPowers) => async (vats, devices) => {
 
   const { creatorFacet: governor, instance: governorInstance } = await E(
     zoe,
-  ).startInstance(installations.contractGovernor);
+  ).startInstance(installations.contractGovernor, {}, { timer });
   const governedContract = await E(governor).startGovernedInstance(
     committeeCreator,
     installations.governedContract,
@@ -170,7 +162,6 @@ const makeBootstrap = (argv, cb, vatPowers) => async (vats, devices) => {
       const votersP = createCommittee(committeeCreator, voterCreator);
       const detailsP = contractGovernorStart(
         zoe,
-        timer,
         log,
         installations,
         governedContract,

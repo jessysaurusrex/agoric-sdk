@@ -2,6 +2,8 @@
 
 import { assert, details as X } from '@agoric/assert';
 import { makeHandle } from '@agoric/zoe/src/makeHandle';
+import { passStyleOf } from '@agoric/marshal';
+import { sameStructure } from '@agoric/same-structure';
 import { assertType, ParamType } from './paramManager';
 
 /**
@@ -43,81 +45,110 @@ const QuorumRule = {
   ALL: 'all',
 };
 
-const makeBallotSpec = (
-  method,
-  question,
-  positions,
-  electionType,
-  maxChoices = 0,
-) => {
-  assert(maxChoices <= positions.length, X`Choices must not exceed length`);
-  assert(
-    positions.every(p => typeof p === 'string', X`positions must be strings`),
-  );
-
-  return { method, question, positions, maxChoices, electionType };
-};
-
-const buildEqualWeightBallot = (ballotSpec, instance, closingRule) => {
-  const handle = makeHandle('Ballot');
-  const { question, positions, maxChoices } = ballotSpec;
-  const choose = chosenPositions => {
-    assert(
-      chosenPositions.length <= maxChoices,
-      X`only ${maxChoices} position(s) allowed`,
-    );
-    assert(
-      chosenPositions.every(p => positions.includes(p)),
-      X`Some positions in ${chosenPositions} are not valid in ${positions}`,
-    );
-
-    /** @type {CompleteEqualWeightBallot} */
-    return { handle, chosen: chosenPositions, question };
-  };
-
-  const getDetails = () =>
-    harden({
-      handle,
-      ballotSpec,
-      instance,
-      closingRule,
-    });
-
-  return {
-    getBallotCounter: () => instance,
-    getDetails,
-    choose,
-  };
-};
-
-function verifyQuestionFormat(electionType, question) {
+const verifyQuestionFormat = (electionType, question) => {
   switch (electionType) {
     case ElectionType.SURVEY:
     case ElectionType.ELECTION:
-      assert.typeof(question, 'string');
+      assert.typeof(
+        question.text,
+        'string',
+        X`Question ("${question}") must be a record with text: aString`,
+      );
       break;
     case ElectionType.PARAM_CHANGE:
-      assert.typeof(question.param, 'string');
+      assert.typeof(
+        question.param,
+        'string',
+        X`Question ("${question}") must be a record with param: aString`,
+      );
       assert(question.proposedValue);
       assertType(ParamType.INSTANCE, question.contract, electionType);
       break;
     default:
       throw Error(`Election type unrecognized`);
   }
-}
+};
+
+const positionIncluded = (positions, p) =>
+  positions.some(e => sameStructure(e, p));
+
+const makeBallotSpec = (
+  method,
+  question,
+  positions,
+  electionType,
+  maxChoices,
+  closingRule,
+  quorumRule,
+  tieOutcome,
+) => {
+  verifyQuestionFormat(electionType, question);
+
+  assert(
+    positions.every(
+      p => passStyleOf(p) === 'copyRecord',
+      X`positions must be records`,
+    ),
+  );
+
+  assert(
+    [QuorumRule.HALF, QuorumRule.ALL, QuorumRule.NONE].includes(quorumRule),
+    X`Illegal QuorumRule ${quorumRule}`,
+  );
+
+  return {
+    method,
+    question,
+    positions,
+    maxChoices,
+    electionType,
+    closingRule,
+    quorumRule,
+    tieOutcome,
+  };
+};
+
+const buildEqualWeightBallot = (ballotSpec, counterInstance) => {
+  const handle = makeHandle('Ballot');
+  const choose = chosenPositions => {
+    assert(
+      chosenPositions.length <= ballotSpec.maxChoices,
+      X`only ${ballotSpec.maxChoices} position(s) allowed`,
+    );
+
+    assert(
+      chosenPositions.every(p => positionIncluded(ballotSpec.positions, p)),
+      X`Some positions in ${chosenPositions} are not valid in ${ballotSpec.positions}`,
+    );
+
+    /** @type {CompleteEqualWeightBallot} */
+    return { handle, chosen: chosenPositions, question: ballotSpec.question };
+  };
+
+  const getDetails = () =>
+    harden({
+      ...ballotSpec,
+      handle,
+      counterInstance,
+    });
+
+  return {
+    getBallotCounter: () => counterInstance,
+    getDetails,
+    choose,
+  };
+};
 
 /** @type {BuildBallot} */
-const buildBallot = (ballotSpec, instance, closingRule) => {
-  const { method } = ballotSpec;
-
+const buildBallot = (ballotSpec, counterInstance) => {
   verifyQuestionFormat(ballotSpec.electionType, ballotSpec.question);
 
-  switch (method) {
+  switch (ballotSpec.method) {
     case ChoiceMethod.CHOOSE_N:
-      return buildEqualWeightBallot(ballotSpec, instance, closingRule);
+      return buildEqualWeightBallot(ballotSpec, counterInstance);
     case ChoiceMethod.ORDER:
     case ChoiceMethod.WEIGHT:
-      throw Error(`choice method ${method} is unimplemented`);
+      throw Error(`choice method ${ballotSpec.method} is unimplemented`);
     default:
       throw Error(`choice method unrecognized`);
   }
@@ -129,6 +160,7 @@ harden(QuorumRule);
 harden(ElectionType);
 harden(makeBallotSpec);
 harden(verifyQuestionFormat);
+harden(positionIncluded);
 
 export {
   ChoiceMethod,
@@ -136,5 +168,6 @@ export {
   QuorumRule,
   buildBallot,
   makeBallotSpec,
+  positionIncluded,
   verifyQuestionFormat,
 };

@@ -4,6 +4,7 @@ import { Far } from '@agoric/marshal';
 import { E } from '@agoric/eventual-send';
 import { details as X } from '@agoric/assert';
 
+import { makePromiseKit } from '@agoric/promise-kit';
 import { setupGovernance } from './governParam';
 
 /*
@@ -12,7 +13,7 @@ import { setupGovernance } from './governParam';
  * were declared by the contract.
  *
  * ContractManager is initialized by a call to startGovernedInstance() on this
- * contract's creatorFacet. That call initializes the registrar, and identifies
+ * contract's creatorFacet. That call specifies the registrar, and identifies
  * the Installation to be started.
  *
  * The governedContract is responsible for supplying getParamMgrAccessor() in
@@ -32,9 +33,12 @@ import { setupGovernance } from './governParam';
  */
 const start = async zcf => {
   const zoe = zcf.getZoeService();
-  let registrar;
-  /** @type {Instance} */
-  let governedInstance;
+  /** @type {PromiseRecord<Instance>} */
+  const registrar = makePromiseKit();
+  let startedOnce = false;
+  /** @type {PromiseRecord<Instance>} */
+  const governedInstance = makePromiseKit();
+  const { timer } = zcf.getTerms();
 
   /** @type {StartGovernedContract} */
   const startGovernedInstance = async (
@@ -43,8 +47,12 @@ const start = async zcf => {
     issuerKeywordRecord,
     customTerms,
   ) => {
-    assert(!registrar, X`Governed contract can only be created once`);
-    registrar = E(registrarCreatorFacet).getPublicFacet();
+    assert(!startedOnce, X`Governed contract can only be created once`);
+    startedOnce = true;
+    const poserInvitation = await E(registrarCreatorFacet).getPoserInvitation();
+    registrar.resolve(
+      E.get(E(zoe).getInvitationDetails(poserInvitation)).instance,
+    );
 
     const augmentedTerms = {
       ...customTerms,
@@ -56,20 +64,28 @@ const start = async zcf => {
       issuerKeywordRecord,
       augmentedTerms,
     );
-    governedInstance = instance;
+    governedInstance.resolve(instance);
 
+    // don't give the ability to update params to anyone but governedContract.
+    const {
+      getParamMgrAccessor: _ignore,
+      ...limitedCreatorFacet
+    } = creatorFacet;
     const paramManagerAccessor = E(creatorFacet).getParamMgrAccessor();
+
+    const poserFacet = await E(E(zoe).offer(poserInvitation)).getOfferResult();
 
     const { voteOnParamChange } = await setupGovernance(
       paramManagerAccessor,
-      registrarCreatorFacet,
-      governedInstance,
+      poserFacet,
+      governedInstance.promise,
+      timer,
     );
 
     return Far('governedContract', {
       voteOnParamChange,
-      getCreatorFacet: () => creatorFacet,
-      getInstance: () => governedInstance,
+      getCreatorFacet: () => limitedCreatorFacet,
+      getInstance: () => governedInstance.promise,
       getPublicFacet: () => publicFacet,
     });
   };
@@ -79,8 +95,8 @@ const start = async zcf => {
   });
 
   const publicFacet = Far('contract governor public', {
-    getRegistrar: () => registrar,
-    getGovernedContract: () => governedInstance,
+    getRegistrar: () => registrar.promise,
+    getGovernedContract: () => governedInstance.promise,
   });
 
   return { creatorFacet, publicFacet };

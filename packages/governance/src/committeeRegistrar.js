@@ -12,6 +12,11 @@ const { ceilDivide } = natSafeMath;
 
 // Each CommitteeRegistrar represents a particular set of voters. The number of
 // voters is visible in the terms.
+//
+// This contract creates an electorate that is not visible to observers. There
+// may be uses for such a structure, but it is not appropriate for uses where
+// the set of voters needs to be known, unless the contract is used in a way
+// that makes the distribution of voter facees visible.
 const start = zcf => {
   /**
    * @typedef {Object} QuestionRecord
@@ -62,7 +67,7 @@ const start = zcf => {
   }
 
   /** @type {AddQuestion} */
-  const addQuestion = async (voteCounter, questionDetailsShort) => {
+  const addQuestion = async (voteCounter, ballotSpec) => {
     const quorumThreshold = quorumRule => {
       switch (quorumRule) {
         case QuorumRule.HALF:
@@ -76,15 +81,16 @@ const start = zcf => {
       }
     };
 
-    const questionDetails = {
-      ...questionDetailsShort,
+    const ballotCounterTerms = {
+      ballotSpec,
       registrar: zcf.getInstance(),
-      quorumThreshold: quorumThreshold(questionDetailsShort.quorumRule),
+      quorumThreshold: quorumThreshold(ballotSpec.quorumRule),
     };
+
     // facets of the ballot counter. creatorInvitation and adminFacet not used
     const { creatorFacet, publicFacet, instance } = await E(
       zcf.getZoeService(),
-    ).startInstance(voteCounter, {}, questionDetails);
+    ).startInstance(voteCounter, {}, ballotCounterTerms);
     const details = await E(publicFacet).getDetails();
     const facets = { voter: E(creatorFacet).getVoterFacet(), publicFacet };
     allQuestions.init(details.handle, facets);
@@ -105,8 +111,14 @@ const start = zcf => {
       ),
   });
 
+  const getPoserInvitation = () => {
+    const questionPoserHandler = () => Far(`questionPoser`, { addQuestion });
+    return zcf.makeInvitation(questionPoserHandler, `questionPoser`);
+  };
+
   /** @type {RegistrarCreator} */
   const creatorFacet = Far('adminFacet', {
+    getPoserInvitation,
     addQuestion,
     getVoterInvitations: () => invitations,
     getQuestionNotifier: () => notifier,

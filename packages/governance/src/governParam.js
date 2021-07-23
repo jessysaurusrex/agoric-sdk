@@ -1,40 +1,43 @@
 // @ts-check
 
-import { details as X, q } from '@agoric/assert';
 import { E } from '@agoric/eventual-send';
 import { Far } from '@agoric/marshal';
+import { sameStructure } from '@agoric/same-structure';
+import { makePromiseKit } from '@agoric/promise-kit';
 
 import {
-  makeBallotSpec,
   ChoiceMethod,
   QuorumRule,
   ElectionType,
+  makeBallotSpec,
 } from './ballotBuilder';
 import { assertType } from './paramManager';
 
 const paramChangePositions = (paramName, proposedValue) => {
-  const positive = `change ${paramName} to ${q(proposedValue)}.`;
-  const negative = `leave ${paramName} unchanged.`;
+  const positive = harden({ changeParam: paramName, proposedValue });
+  const negative = harden({ noChange: paramName });
   return { positive, negative };
 };
 
 /** @type {SetupGovernance} */
 const setupGovernance = async (
   paramManagerAccessor,
-  registrarInstance,
+  poserFacet,
   contractInstance,
+  timer,
 ) => {
   /** @type {VoteOnParamChange} */
   const voteOnParamChange = async (
     paramSpec,
     proposedValue,
     ballotCounterInstallation,
-    closingRule,
+    deadline,
   ) => {
     const paramMgr = E(paramManagerAccessor).get(paramSpec);
     const paramName = paramSpec.parameterName;
     const param = await E(paramMgr).getParam(paramName);
     assertType(param.type, proposedValue, paramName);
+    const outcomeOfUpdateP = makePromiseKit();
 
     const { positive, negative } = paramChangePositions(
       paramName,
@@ -50,50 +53,36 @@ const setupGovernance = async (
       [positive, negative],
       ElectionType.PARAM_CHANGE,
       1,
+      { timer, deadline },
+      QuorumRule.HALF,
+      negative,
     );
-    /** @type {BinaryBallotDetails} */
-    const binaryBallotDetails = harden({
-      ballotSpec,
-      quorumRule: QuorumRule.HALF,
-      tieOutcome: negative,
-      closingRule,
-    });
 
     const {
       publicFacet: counterPublicFacet,
       instance: ballotCounter,
-    } = await E(registrarInstance).addQuestion(
-      ballotCounterInstallation,
-      binaryBallotDetails,
-    );
+    } = await E(poserFacet).addQuestion(ballotCounterInstallation, ballotSpec);
 
     E(counterPublicFacet)
       .getOutcome()
       .then(outcome => {
-        if (outcome === positive) {
+        if (sameStructure(positive, outcome)) {
           E(paramMgr)
             [`update${paramName}`](proposedValue)
+            .then(newValue => outcomeOfUpdateP.resolve(newValue))
             .catch(e => {
-              assert.note(
-                e,
-                X`Unable to update ${paramName} to ${proposedValue}`,
-              );
-              throw e;
+              outcomeOfUpdateP.reject(e);
             });
         }
-        return outcome;
       })
       .catch(e => {
-        assert.note(
-          e,
-          X`There was an error in computing the vote with details: ${binaryBallotDetails}`,
-        );
-        throw e;
+        outcomeOfUpdateP.reject(e);
       });
 
     const details = await E(counterPublicFacet).getDetails();
 
     return {
+      outcomeOfUpdate: outcomeOfUpdateP.promise,
       instance: ballotCounter,
       details,
     };

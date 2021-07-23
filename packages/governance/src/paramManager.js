@@ -96,6 +96,7 @@ const parse = paramDesc => {
     manager[`update${name}`] = newValue => {
       assertType(type, newValue, name);
       typesAndValues[name].value = newValue;
+      return newValue;
     };
   });
 

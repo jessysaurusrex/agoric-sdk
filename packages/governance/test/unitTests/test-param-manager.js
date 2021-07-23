@@ -7,6 +7,7 @@ import { makeRatio } from '@agoric/zoe/src/contractSupport';
 
 import { makeHandle } from '@agoric/zoe/src/makeHandle';
 import { buildParamManager, ParamType } from '../../src/paramManager';
+import { paramChangePositions } from '../../src/governParam';
 
 const BASIS_POINTS = 10_000;
 
@@ -287,4 +288,101 @@ test('params multiple values', t => {
   });
   updateNat(299792458n);
   t.deepEqual(getParam(natKey).value, 299792458n);
+});
+
+const positive = (name, val) => {
+  return { changeParam: name, proposedValue: val };
+};
+
+const negative = name => {
+  return { noChange: name };
+};
+
+test('positions amount', t => {
+  const amountKey = 'Amount';
+  const { brand } = makeIssuerKit('roses', AssetKind.SET);
+  const amount = AmountMath.makeEmpty(brand);
+
+  const positions = paramChangePositions(amountKey, amount);
+  t.deepEqual(positions.positive, positive(amountKey, amount));
+  t.deepEqual(positions.negative, negative(amountKey));
+  t.notDeepEqual(positions.positive, positive(AmountMath.make(brand, [1])));
+});
+
+test('positions brand', t => {
+  const brandKey = 'brand';
+  const { brand: roseBrand } = makeIssuerKit('roses', AssetKind.SET);
+  const { brand: thornBrand } = makeIssuerKit('thorns', AssetKind.SET);
+
+  const positions = paramChangePositions(brandKey, roseBrand);
+  t.deepEqual(positions.positive, positive(brandKey, roseBrand));
+  t.deepEqual(positions.negative, negative(brandKey));
+  t.not(positions.positive, positive(brandKey, thornBrand));
+});
+
+test('positions instance', t => {
+  const instanceKey = 'instance';
+  // this is sufficient for the current type check. When we add
+  // isInstallation() (#3344), we'll need to make a mockZoe.
+  const instanceHandle = makeHandle('Instance');
+
+  const positions = paramChangePositions(instanceKey, instanceHandle);
+  t.deepEqual(positions.positive, positive(instanceKey, instanceHandle));
+  t.deepEqual(positions.negative, negative(instanceKey));
+  t.not(positions.positive, positive(instanceKey, makeHandle('Instance')));
+});
+
+test('positions Installation', t => {
+  const installationKey = 'installation';
+  // this is sufficient for the current type check. When we add
+  // isInstallation() (#3344), we'll need to make a mockZoe.
+  const installationHandle = makeHandle('Installation');
+
+  const positions = paramChangePositions(installationKey, installationHandle);
+  t.deepEqual(
+    positions.positive,
+    positive(installationKey, installationHandle),
+  );
+  t.deepEqual(positions.negative, negative(installationKey));
+  t.not(
+    positions.positive,
+    positive(installationKey, makeHandle('Installation')),
+  );
+});
+
+test('positions Nat', t => {
+  const natKey = 'nat';
+  const nat = 3n;
+
+  const positions = paramChangePositions(natKey, nat);
+  t.deepEqual(positions.positive, positive(natKey, nat));
+  t.deepEqual(positions.negative, negative(natKey));
+  t.notDeepEqual(positions.positive, positive(natKey, 4n));
+});
+
+test('positions Ratio', t => {
+  const ratioKey = 'ratio';
+  const { brand } = makeIssuerKit('elo', AssetKind.NAT);
+  const ratio = makeRatio(2500, brand, 2400);
+
+  const positions = paramChangePositions(ratioKey, ratio);
+  t.deepEqual(positions.positive, positive(ratioKey, ratio));
+  t.deepEqual(positions.negative, negative(ratioKey));
+  t.notDeepEqual(
+    positions.positive,
+    positive(ratioKey, makeRatio(2500, brand, 2200)),
+  );
+});
+
+test('positions string', t => {
+  const stringKey = 'string';
+  const string = 'When in the course';
+
+  const positions = paramChangePositions(stringKey, string);
+  t.deepEqual(positions.positive, positive(stringKey, string));
+  t.deepEqual(positions.negative, negative(stringKey));
+  t.notDeepEqual(
+    positions.positive,
+    positive(stringKey, 'We hold these truths'),
+  );
 });

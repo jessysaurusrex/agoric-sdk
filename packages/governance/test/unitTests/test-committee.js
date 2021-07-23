@@ -58,26 +58,25 @@ test('committee-open question:one', async t => {
     counterInstallation,
   } = await setupContract();
 
+  const positions = [harden({ text: 'because' }), harden({ text: 'why not?' })];
   const ballotSpec = makeBallotSpec(
     ChoiceMethod.CHOOSE_N,
-    'why',
-    ['because', 'why not?'],
+    harden({ text: 'why' }),
+    positions,
     ElectionType.SURVEY,
     1,
-  );
-  const details = harden({
-    ballotSpec,
-    closingRule: {
+    {
       timer: buildManualTimer(console.log),
       deadline: 2n,
     },
-    quorumRule: QuorumRule.HALF,
-  });
-  await E(creatorFacet).addQuestion(counterInstallation, details);
+    QuorumRule.HALF,
+    positions[1],
+  );
+  await E(creatorFacet).addQuestion(counterInstallation, ballotSpec);
   const question = await publicFacet.getOpenQuestions();
   const ballot = E(publicFacet).getBallot(question[0]);
   const ballotDetails = await E(ballot).getDetails();
-  t.deepEqual(ballotDetails.ballotSpec.question, 'why');
+  t.deepEqual(ballotDetails.question.text, 'why');
 });
 
 test('committee-open question:mixed', async t => {
@@ -87,49 +86,39 @@ test('committee-open question:mixed', async t => {
   } = await setupContract();
 
   const timer = buildManualTimer(console.log);
+  const positions = [harden({ text: 'because' }), harden({ text: 'why not?' })];
   const ballotSpec = makeBallotSpec(
     ChoiceMethod.CHOOSE_N,
-    'why',
-    ['because', 'why not?'],
+    harden({ text: 'why' }),
+    positions,
     ElectionType.SURVEY,
     1,
+    { timer, deadline: 4n },
+    QuorumRule.HALF,
+    positions[1],
   );
-  const details = harden({
-    ballotSpec,
-    closingRule: {
-      timer,
-      deadline: 4n,
-    },
-    quorumRule: QuorumRule.HALF,
-  });
-  await E(creatorFacet).addQuestion(counterInstallation, details);
+  await E(creatorFacet).addQuestion(counterInstallation, ballotSpec);
 
   const ballotSpec2 = {
     ...ballotSpec,
-    question: 'why2',
-  };
-  const details2 = harden({
-    ballotSpec: ballotSpec2,
-    closingRule: details.closingRule,
+    question: harden({ text: 'why2' }),
+    closingRule: ballotSpec.closingRule,
     quorumRule: QuorumRule.HALF,
-  });
-  await E(creatorFacet).addQuestion(counterInstallation, details2);
+  };
+  await E(creatorFacet).addQuestion(counterInstallation, ballotSpec2);
 
   const ballotSpec3 = {
     ...ballotSpec,
-    question: 'why3',
-  };
-  const details3 = harden({
-    ballotSpec: ballotSpec3,
+    question: harden({ text: 'why3' }),
     closingRule: {
       timer,
       deadline: 1n,
     },
     quorumRule: QuorumRule.HALF,
-  });
+  };
   const { publicFacet: counterPublic } = await E(creatorFacet).addQuestion(
     counterInstallation,
-    details3,
+    ballotSpec3,
   );
   // We didn't add any votes. getOutcome() will eventually return a broken
   // promise, but not until some time after tick(). Add a .catch() for it.

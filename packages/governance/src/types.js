@@ -51,16 +51,13 @@
  */
 
 /**
- * @callback BuildParamManager
- * @param {ParamDescriptions} paramDesc
- * @returns {ParamManagerFull}
+ * @typedef {Record<string, string[]>} ParameterNameList
  */
 
 /**
- * @typedef {Object} QuestionTermsShort - ballot details for the Registrar
- * @property {BallotSpec} ballotSpec
- * @property {ClosingRule} closingRule
- * @property {QuorumRule} quorumRule
+ * @callback BuildParamManager
+ * @param {ParamDescriptions} paramDesc
+ * @returns {ParamManagerFull}
  */
 
 /**
@@ -90,37 +87,57 @@
  */
 
 /**
+ * @typedef {Object} textPosition
+ * @property {string} text
+ */
+
+/**
+ * @typedef {Object} changeParamPosition
+ * @property {string} changeParam
+ * @property {ParamValue} proposedValue
+ */
+
+/**
+ * @typedef {Object} noChangeParamPosition
+ * @property {string} noChange
+ */
+
+/**
+ * @typedef { textPosition | changeParamPosition | noChangeParamPosition } Position
+ */
+
+/**
  * @typedef {Object} BallotSpec
- *    ballot specification: only questions and choices
+ *   Specification when requesting a Ballot
  * @property {ChoiceMethod} method
  * @property {Question} question
- * @property {string[]} positions
+ * @property {Position[]} positions
  * @property {ElectionType} electionType
  * @property {number} maxChoices
+ * @property {ClosingRule} closingRule
+ * @property {QuorumRule} quorumRule
+ * @property {Position} tieOutcome
  */
 
 /**
  * @typedef {Object} BallotDetails
- *    ballot details: BallotSpec details of a particular vote
- * @property {BallotSpec} ballotSpec
- * @property {Instance} instance - instance of the BallotCounter
- * @property {ClosingRule} closingRule
- * @property {Handle<'Ballot'>} handle
- */
-
-/**
- * @typedef {Object} BinaryBallotDetails
- *    ballot details for a binary ballot include quorum and default winner
- * @property {BallotSpec} ballotSpec
+ *    complete ballot details: ballotSpec plus counter and handle
+ * @property {ChoiceMethod} method
+ * @property {Question} question
+ * @property {Position[]} positions
+ * @property {ElectionType} electionType
+ * @property {number} maxChoices
  * @property {ClosingRule} closingRule
  * @property {QuorumRule} quorumRule
- * @property {string} tieOutcome
+ * @property {Position} tieOutcome
+ * @property {Instance} counterInstance - instance of the BallotCounter
+ * @property {Handle<'Ballot'>} handle
  */
 
 /**
  * @typedef {Object} Ballot
  * @property {() => Instance} getBallotCounter
- * @property {(positions: string[]) => CompletedBallot} choose
+ * @property {(positions: Position[]) => CompletedBallot} choose
  * @property {() => BallotDetails} getDetails
  */
 
@@ -146,7 +163,6 @@
  * @callback BuildBallot
  * @param {BallotSpec} ballotSpec
  * @param {Instance} instance - ballotCounter instance
- * @param {ClosingRule} closingRule
  * @returns {Ballot}
  */
 
@@ -161,7 +177,7 @@
  * @typedef {Object} BallotCounterPublicFacet
  * @property {() => boolean} isOpen
  * @property {() => Ballot} getBallotTemplate
- * @property {() => Promise<string>} getOutcome
+ * @property {() => Promise<Position>} getOutcome
  * @property {() => BallotDetails} getDetails
  * @property {() => Promise<VoteStatistics>} getStats
  */
@@ -197,10 +213,9 @@
 /**
  * @callback BuildBallotCounter
  * @param {BallotSpec} ballotSpec
- * @param {bigint} threshold
- * @param {ClosingRule} closingRule
+ * @param {bigint} threshold - ballotSpec includes quorumRule; the registrar
+ *    converts that to a number that the counter can enforce.
  * @param {Instance} instance
- * @param {string=} tieOutcome
  * @returns {BallotCounterFacets}
  */
 
@@ -250,7 +265,7 @@
 /**
  * @callback AddQuestion
  * @param {Installation} voteCounter
- * @param {QuestionTermsShort} questionDetailsShort
+ * @param {BallotSpec} ballotSpec
  * @returns {Promise<AddQuestionReturn>}
  */
 
@@ -305,14 +320,16 @@
  * @typedef {Object} ParamChangeVoteResult
  * @property {Instance} instance - instance of the BallotCounter
  * @property {Details} details
+ * @property {Promise<ParamValue>} outcomeOfUpdate
  */
 
 /**
  * @typedef {Object} GovernedContract
  * @property {VoteOnParamChange} voteOnParamChange
- * @property {() => any} getCreatorFacet
- * @property {() => any} getPublicFacet
- * @property {() => Instance} getInstance
+ * @property {() => any} getCreatorFacet - creator facet of the governed
+ *   contract, without the tightly held abiilty to change param values.
+ * @property {() => any} getPublicFacet - public facet of the governed contract
+ * @property {() => ERef<Instance>} getInstance - instance of the governed contract
  */
 
 /**
@@ -329,7 +346,7 @@
  * @param {ParamSpecification} paramSpec
  * @param {ParamValue} proposedValue
  * @param {Installation} ballotCounterInstallation
- * @param {ClosingRule} closingRule
+ * @param {bigint} deadline
  * @returns {ParamChangeVoteResult}
  */
 
@@ -353,7 +370,16 @@
  */
 
 /**
+ * @typedef {Object} PoserFacet
+ * @property {AddQuestion} addQuestion
+ */
+
+/**
  * @typedef {Object} RegistrarCreator
+ *  addQuestion() can be used directly when the creator doesn't need any
+ *  reassurance. When someone needs to connect addQuestion to the Registrar
+ *  instance, getPoserInvitation() lets them get addQuestion with assurance.
+ * @property {() => Invitation} getPoserInvitation
  * @property {AddQuestion} addQuestion
  * @property {() => Invitation[]} getVoterInvitations
  * @property {() => Notifier<BallotDetails>} getQuestionNotifier
@@ -363,7 +389,8 @@
 /**
  * @callback SetupGovernance
  * @param {ERef<ParamManagerAccessor>} accessor
- * @param {RegistrarCreator} registrarCreator
- * @param {Instance} contractInstance
+ * @param {PoserFacet} poserFacet
+ * @param {ERef<Instance>} contractInstance
+ * @param {Timer} timer
  * @returns {ParamGovernor}
  */

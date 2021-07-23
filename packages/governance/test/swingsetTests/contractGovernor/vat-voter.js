@@ -2,6 +2,8 @@
 
 import { E } from '@agoric/eventual-send';
 import { Far } from '@agoric/marshal';
+import { q } from '@agoric/assert';
+import { assertContractGovernance } from '../../../src/validators';
 
 const build = async (log, zoe) => {
   return Far('voter', {
@@ -11,7 +13,7 @@ const build = async (log, zoe) => {
 
       return Far(`Voter ${name}`, {
         castBallotFor: async (handle, choice) => {
-          log(`Voter ${name} cast a ballot for ${choice}`);
+          log(`Voter ${name} cast a ballot for ${q(choice)}`);
           return E(voteFacet).castBallotFor(handle, [choice]);
         },
         validate: async (
@@ -28,39 +30,28 @@ const build = async (log, zoe) => {
           const electionManagerP = E.get(governedTermsP).electionManager;
           const governedParamP = E.get(governedTermsP).governedParams;
           const governorPublicP = E(zoe).getPublicFacet(await electionManagerP);
-          const registrarPublicFromGovernorP = E(
-            governorPublicP,
-          ).getRegistrar();
-          const registrarIFromGovernorP = E(
-            registrarPublicFromGovernorP,
-          ).getInstance();
+          const registrarIFromGovernorP = E(governorPublicP).getRegistrar();
 
           const counterPublicP = E(zoe).getPublicFacet(counterInstance);
-          const ballotSpecP = E.get(E(counterPublicP).getDetails()).ballotSpec;
+          const ballotDetailsP = E(counterPublicP).getDetails();
 
           const [
-            electionManager,
             registrarIFromGovernor,
             governedParam,
-            ballotSpec,
+            ballotDetails,
           ] = await Promise.all([
-            electionManagerP,
             registrarIFromGovernorP,
             governedParamP,
-            ballotSpecP,
+            ballotDetailsP,
           ]);
 
-          const governorMatches = electionManager === governorInstance;
-          log(
-            `governor from governed ${
-              governorMatches ? 'matches' : 'does not match'
-            } governor instance`,
-          );
-
           const contractParam = governedParam.contractParams;
-          const included = ballotSpec.question.param === contractParam[0];
+          const included = ballotDetails.question.param === contractParam[0];
+
           log(
-            `"${contractParam}" ${included ? 'is' : 'is not'} in the question`,
+            `"${ballotDetails.question.param}" ${
+              included ? 'is' : 'is not'
+            } in the question`,
           );
 
           const registrarsMatch = registrarIFromGovernor === registrarInstance;
@@ -69,6 +60,8 @@ const build = async (log, zoe) => {
               registrarsMatch ? 'matches' : 'does not match'
             }`,
           );
+
+          assertContractGovernance(zoe, governedInstance, governorInstance);
         },
       });
     },
