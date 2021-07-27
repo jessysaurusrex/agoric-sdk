@@ -1,18 +1,21 @@
 // @ts-check
 
 import { makeWeakStore as makeNonVOWeakStore } from '@agoric/store';
+import { Far } from '@agoric/marshal';
 
 import { makeHandle } from '../makeHandle';
 
+const { isFrozen } = Object;
+
 export const makeOfferHandlerStorage = () => {
   /** @type {WeakStore<InvitationHandle, OfferHandler>} */
-  const invitationHandleToHandler = makeNonVOWeakStore(
-    'invitationHandle',
-    { passableOnly: false }, // TODO transitional until we have far functions
-  );
+  const invitationHandleToHandler = makeNonVOWeakStore('invitationHandle');
 
   /** @type {(offerHandler: OfferHandler) => InvitationHandle} */
   const storeOfferHandler = offerHandler => {
+    if (!isFrozen(offerHandler)) {
+      Far('offerHandler', offerHandler);
+    }
     const invitationHandle = makeHandle('Invitation');
     invitationHandleToHandler.init(invitationHandle, offerHandler);
     return invitationHandle;

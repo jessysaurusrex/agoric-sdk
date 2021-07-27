@@ -226,6 +226,7 @@ export function buildRootObject(_vatPowers) {
               const amt = AmountMath.make(brand, BigInt(value));
               updater.updateState(amt);
             };
+            Far('balanceUpdater', balanceUpdater);
 
             // Get the initial balance.
             addressToUpdater.init(address, balanceUpdater);
@@ -329,13 +330,7 @@ export function buildRootObject(_vatPowers) {
             brand,
           });
           brandToAssetRecord.init(brand, assetRecord);
-          denomToAddressUpdater.init(
-            denom,
-            makeStore(
-              'address',
-              { passableOnly: false }, // no far functions yet
-            ),
-          );
+          denomToAddressUpdater.init(denom, makeStore('address'));
           assetPublication.updateState(
             harden({
               brand,

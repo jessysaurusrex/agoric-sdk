@@ -96,12 +96,6 @@
  */
 
 /**
- * @template {ExternalInstance} T
- * @typedef {Remotable} Hydrater
- * @property {(data: HydrateData) => T} hydrate
- */
-
-/**
  * An external store that decouples the closure data from the returned
  * "representative" instance.
  *
@@ -110,7 +104,7 @@
  * @callback MakeHydrateExternalStore
  * @param {string} instanceKind
  * @param {(...args: A) => HydrateData} adaptArguments
- * @param {(init?: HydrateInit) => Hydrater<T>} makeHydrater
+ * @param {(init?: HydrateInit) => (data: HydrateData) => T} makeHydrate
  * @returns {ExternalStore<(...args: A) => T>}
  */
 

@@ -27,7 +27,7 @@ export const makeHydrateExternalStoreMaker = makeBackingStore => {
   let lastStoreId = 0;
 
   // This has to be a strong store, since it is indexed by ID.
-  const storeIdToHydrater = makeStore('storeId');
+  const storeIdToHydrate = makeStore('storeId');
 
   /**
    * Create a data object that queues writes to the store.
@@ -60,34 +60,34 @@ export const makeHydrateExternalStoreMaker = makeBackingStore => {
       return instanceToKey.get(value);
     },
     load([storeId, instanceId]) {
-      const hydrater = storeIdToHydrater.get(storeId);
+      const hydrate = storeIdToHydrate.get(storeId);
       const store = backing.getHydrateStore(storeId);
 
       const data = store.get(instanceId);
       const markDirty = () => store.set(instanceId, data);
 
       const activeData = makeActiveData(data, markDirty);
-      const obj = hydrater.hydrate(activeData);
-      instanceToKey.init(obj, harden([storeId, instanceId]));
+      const obj = hydrate(activeData);
+      instanceToKey.init(obj, [storeId, instanceId]);
       return obj;
     },
     drop(storeId) {
-      storeIdToHydrater.delete(storeId);
+      storeIdToHydrate.delete(storeId);
     },
   };
 
   backing = makeBackingStore(hydrateHook);
 
   /** @type {MakeHydrateExternalStore<A, T>} */
-  function makeHydrateExternalStore(keyName, adaptArguments, makeHydrater) {
+  function makeHydrateExternalStore(keyName, adaptArguments, makeHydrate) {
     let lastInstanceId = 0;
 
     lastStoreId += 1;
     const storeId = lastStoreId;
     const hstore = backing.makeHydrateStore(storeId, keyName);
 
-    const initHydrater = makeHydrater(true);
-    storeIdToHydrater.init(storeId, makeHydrater());
+    const initHydrate = makeHydrate(true);
+    storeIdToHydrate.init(storeId, makeHydrate());
 
     /** @type {ExternalStore<(...args: A) => T>} */
     const estore = harden({
@@ -96,7 +96,7 @@ export const makeHydrateExternalStoreMaker = makeBackingStore => {
         // Create a new object with the above guts.
         lastInstanceId += 1;
         const instanceId = lastInstanceId;
-        initHydrater.hydrate(data);
+        initHydrate(data);
 
         // We store and reload it to sanity-check the initial state and also to
         // ensure that the new object has active data.

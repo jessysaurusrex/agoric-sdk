@@ -108,23 +108,21 @@ test('rewritten code', t => {
     'Hello instance',
     (msg = 'Hello') => ({ msg }),
     $hinit =>
-      Far('hydrater', {
-        hydrate: $hdata => {
-          let startCount = $hinit && 24;
-          $hinit && (startCount += 1);
-          $hinit && ($hdata.invocationCount = startCount);
-          const obj = Far('hello nick', {
-            hello(nick) {
-              $hdata.invocationCount += 1;
-              return `${$hdata.msg}, ${nick}!`;
-            },
-            getCount() {
-              return { moduleLevel, invocationCount: $hdata.invocationCount };
-            },
-          });
-          $hinit && obj.hello('init');
-          return obj;
-        },
+      Far('hydrater', $hdata => {
+        let startCount = $hinit && 24;
+        $hinit && (startCount += 1);
+        $hinit && ($hdata.invocationCount = startCount);
+        const obj = Far('hello nick', {
+          hello(nick) {
+            $hdata.invocationCount += 1;
+            return `${$hdata.msg}, ${nick}!`;
+          },
+          getCount() {
+            return { moduleLevel, invocationCount: $hdata.invocationCount };
+          },
+        });
+        $hinit && obj.hello('init');
+        return obj;
       }),
   );
 
