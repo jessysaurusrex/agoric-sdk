@@ -78,7 +78,9 @@ export function makeSlogCallbacks({ metricMeter, labels }) {
       boundaries: HISTOGRAM_MS_LATENCY_BOUNDARIES,
     }),
   );
-  const groupToMetrics = makeStore('metricGroup');
+  const groupToMetrics = makeStore('metricGroup',
+    { passableOnly: false }, // because it containts a non-passable store
+  );
 
   /**
    * This function reuses or creates per-group named metrics.
