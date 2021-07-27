@@ -16,6 +16,8 @@ import '../internal-types';
  * Amount values. The amounts are the sums.
  */
 const sumByBrand = amounts => {
+  // TODO why didn't it need the type declartion before?
+  /** @type {Store<Brand, Amount>} */
   const sumsByBrand = makeStore('brand');
   amounts.forEach(amount => {
     const { brand } = amount;

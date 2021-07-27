@@ -49,7 +49,8 @@ const assertValue = (value, passableOnly) => {
  * `init` is only allowed if the key does not already exist. `Get`,
  * `set` and `delete` are only allowed if the key does already exist.
  *
- * @template K,V
+ * @template {Comparable} K
+ * @template {Passable} V
  * @param {string} [keyName='key'] - the column name for the key
  * @param {Partial<StoreOptions>=} options
  * @returns {Store<K,V>}

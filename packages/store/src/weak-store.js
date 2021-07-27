@@ -25,8 +25,8 @@ const assertValue = (value, passableOnly) => {
 };
 
 /**
- * @template {Record<any, any>} K
- * @template {any} V
+ * @template {Comparable} K
+ * @template {Passable} V
  * @param {string} [keyName='key']
  * @param {Partial<WeakStoreOptions>=} options
  * @returns {WeakStore<K, V>}

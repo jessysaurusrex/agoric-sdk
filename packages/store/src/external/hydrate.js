@@ -27,6 +27,8 @@ export const makeHydrateExternalStoreMaker = makeBackingStore => {
   let lastStoreId = 0;
 
   // This has to be a strong store, since it is indexed by ID.
+  // TODO Why didn't it need this type declaration before?
+  /** @type {Store<number,(data: HydrateData) => any>} */
   const storeIdToHydrate = makeStore('storeId');
 
   /**

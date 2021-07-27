@@ -22,25 +22,33 @@ import { satisfies } from '../contractSupport';
  * @type {ContractStartFn}
  */
 const start = zcf => {
-  // bookOrders is a Map of Maps. The first key is the brand of the offer's
-  // GIVE, and the second key is the brand of its WANT. For each offer, we
-  // store its handle and the amounts for `give` and `want`.
+  /**
+   * bookOrders is a Store of Stores. The first key is the brand of the offer's
+   * GIVE, and the second key is the brand of its WANT. For each offer, we
+   * store its handle and the amounts for `give` and `want`.
+   *
+   * @type {Store<Brand,Store<Brand,any[]>>}
+   */
   const bookOrders = makeStore(
-    'bookOrders',
-    { passableOnly: false }, // Because we're storing a genuine JS Map
+    'bookOrders brandIn',
+    { passableOnly: false }, // because has non-passable store values
   );
 
   function lookupBookOrders(brandIn, brandOut) {
     if (!bookOrders.has(brandIn)) {
-      bookOrders.init(brandIn, new Map());
+      bookOrders.init(
+        brandIn,
+        makeStore(
+          'bookOrders brandOut',
+          { passableOnly: false }, // because value array is pushed onto
+        ),
+      );
     }
-    const ordersMap = bookOrders.get(brandIn);
-    let ordersArray = ordersMap.get(brandOut);
-    if (!ordersArray) {
-      ordersArray = [];
-      ordersMap.set(brandOut, ordersArray);
+    const ordersStore = bookOrders.get(brandIn);
+    if (!ordersStore.has(brandOut)) {
+      ordersStore.init(brandOut, []);
     }
-    return ordersArray;
+    return ordersStore.get(brandOut);
   }
 
   function findMatchingTrade(newDetails, orders) {

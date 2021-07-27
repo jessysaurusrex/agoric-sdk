@@ -5,19 +5,15 @@ import { Far } from '@agoric/marshal';
 
 import { makeHandle } from '../makeHandle';
 
-const { isFrozen } = Object;
-
 export const makeOfferHandlerStorage = () => {
   /** @type {WeakStore<InvitationHandle, OfferHandler>} */
   const invitationHandleToHandler = makeNonVOWeakStore('invitationHandle');
 
   /** @type {(offerHandler: OfferHandler) => InvitationHandle} */
   const storeOfferHandler = offerHandler => {
-    if (!isFrozen(offerHandler)) {
-      Far('offerHandler', offerHandler);
-    }
+    const farOfferHandler = Far('offerHandler', seat => offerHandler(seat));
     const invitationHandle = makeHandle('Invitation');
-    invitationHandleToHandler.init(invitationHandle, offerHandler);
+    invitationHandleToHandler.init(invitationHandle, farOfferHandler);
     return invitationHandle;
   };
 
