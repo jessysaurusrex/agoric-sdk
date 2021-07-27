@@ -78,15 +78,17 @@ export function makeSlogCallbacks({ metricMeter, labels }) {
       boundaries: HISTOGRAM_MS_LATENCY_BOUNDARIES,
     }),
   );
-  const groupToMetrics = makeStore('metricGroup',
-    { passableOnly: false }, // because it containts a non-passable store
+  const groupToMetrics = makeStore(
+    'metricGroup',
+    { passableOnly: false }, // because it contains a non-passable store
   );
 
   /**
    * This function reuses or creates per-group named metrics.
    *
    * @param {string} name name of the base metric
-   * @param {Record<string, string>} [group] the labels to associate with a group
+   * @param {Record<string, string>} [group] the labels to associate with a
+   * group
    * @param {Record<string, string>} [instance] the specific metric labels
    * @returns {any} the labelled metric
    */
