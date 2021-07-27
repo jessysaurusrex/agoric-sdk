@@ -60,7 +60,7 @@ export function makeStore(keyName = 'key', { passableOnly = true } = {}) {
     assert(!m.has(key), X`${q(keyName)} already registered: ${key}`);
   const assertKeyExists = key =>
     assert(m.has(key), X`${q(keyName)} not found: ${key}`);
-  return Far('store', {
+  const store = {
     has: key => {
       // .has is very accepting
       return m.has(key);
@@ -87,6 +87,13 @@ export function makeStore(keyName = 'key', { passableOnly = true } = {}) {
     keys: () => Array.from(m.keys()),
     values: () => Array.from(m.values()),
     entries: () => Array.from(m.entries()),
-  });
+  };
+  if (passableOnly) {
+    return Far('store', store);
+  } else {
+    // If the store might return a non-passable, then it should
+    // not itself be passable.
+    return harden(store);
+  }
 }
 harden(makeStore);

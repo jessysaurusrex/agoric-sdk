@@ -40,7 +40,7 @@ export function makeWeakStore(
     assert(!wm.has(key), X`${q(keyName)} already registered: ${key}`);
   const assertKeyExists = key =>
     assert(wm.has(key), X`${q(keyName)} not found: ${key}`);
-  return Far('weakStore', {
+  const weakStore = {
     has: key => {
       // .has is very accepting
       return wm.has(key);
@@ -64,6 +64,13 @@ export function makeWeakStore(
       assertKeyExists(key);
       wm.delete(key);
     },
-  });
+  };
+  if (passableOnly) {
+    return Far('weakStore', weakStore);
+  } else {
+    // If the weakStore might return a non-passable, then it should
+    // not itself be passable.
+    return harden(weakStore);
+  }
 }
 harden(makeWeakStore);
